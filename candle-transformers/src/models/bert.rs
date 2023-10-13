@@ -1,3 +1,5 @@
+use std::future::Future;
+
 use candle::{DType, Device, Result, Tensor};
 use candle_nn::{Embedding, Module, VarBuilder};
 use serde::Deserialize;
@@ -557,9 +559,10 @@ impl BertModel {
         })
     }
 
-    pub fn forward(&self, input_ids: &Tensor, token_type_ids: &Tensor) -> Result<Tensor> {
+    pub async fn forward<F: Fn() -> Fut, Fut: Future<Output = ()>>(&self, input_ids: &Tensor, token_type_ids: &Tensor, commit: F) -> Result<Tensor> {
         let _enter = self.span.enter();
         let embedding_output = self.embeddings.forward(input_ids, token_type_ids)?;
+        commit();
         let sequence_output = self.encoder.forward(&embedding_output)?;
         Ok(sequence_output)
     }

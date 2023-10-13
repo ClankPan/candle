@@ -524,10 +524,13 @@ impl BertEncoder {
 
     fn forward(&self, hidden_states: &Tensor) -> Result<Tensor> {
         let _enter = self.span.enter();
+        ic_cdk::println!("check point 11");
         let mut hidden_states = hidden_states.clone();
+        ic_cdk::println!("check point 12");
         // Use a loop rather than a fold as it's easier to modify when adding debug/...
         for layer in self.layers.iter() {
-            hidden_states = layer.forward(&hidden_states)?
+            hidden_states = layer.forward(&hidden_states)?;
+            ic_cdk::println!("check point 13");
         }
         Ok(hidden_states)
     }

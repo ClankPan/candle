@@ -284,9 +284,9 @@ impl BertEmbeddings {
         }
         let embeddings = self.layer_norm.forward(&embeddings)?;
         ic_cdk::println!("check point 09");
+        commit();
         let embeddings = self.dropout.forward(&embeddings)?;
         ic_cdk::println!("check point 10");
-        commit();
         Ok(embeddings)
     }
 }

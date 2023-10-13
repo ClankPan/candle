@@ -23,6 +23,8 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 wav = { workspace = true }
 
+ic-cdk = "0.7.0"
+
 [features]
 default = []
 accelerate = ["dep:accelerate-src", "candle/accelerate", "candle-nn/accelerate"]

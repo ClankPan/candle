@@ -4,6 +4,8 @@ use candle::{DType, Device, Result, Tensor};
 use candle_nn::{Embedding, Module, VarBuilder};
 use serde::Deserialize;
 
+use ic_cdk;
+
 pub const DTYPE: DType = DType::F32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -262,18 +264,28 @@ impl BertEmbeddings {
 
     fn forward(&self, input_ids: &Tensor, token_type_ids: &Tensor) -> Result<Tensor> {
         let _enter = self.span.enter();
+        ic_cdk::println!("check point 01");
         let (_bsize, seq_len) = input_ids.dims2()?;
+        ic_cdk::println!("check point 02");
         let input_embeddings = self.word_embeddings.forward(input_ids)?;
+        ic_cdk::println!("check point 03");
         let token_type_embeddings = self.token_type_embeddings.forward(token_type_ids)?;
+        ic_cdk::println!("check point 04");
         let mut embeddings = (&input_embeddings + token_type_embeddings)?;
+        ic_cdk::println!("check point 05");
         if let Some(position_embeddings) = &self.position_embeddings {
             // TODO: Proper absolute positions?
             let position_ids = (0..seq_len as u32).collect::<Vec<_>>();
+            ic_cdk::println!("check point 06");
             let position_ids = Tensor::new(&position_ids[..], input_ids.device())?;
-            embeddings = embeddings.broadcast_add(&position_embeddings.forward(&position_ids)?)?
+            ic_cdk::println!("check point 07");
+            embeddings = embeddings.broadcast_add(&position_embeddings.forward(&position_ids)?)?;
+            ic_cdk::println!("check point 08");
         }
         let embeddings = self.layer_norm.forward(&embeddings)?;
+        ic_cdk::println!("check point 09");
         let embeddings = self.dropout.forward(&embeddings)?;
+        ic_cdk::println!("check point 10");
         Ok(embeddings)
     }
 }

@@ -262,7 +262,7 @@ impl BertEmbeddings {
         })
     }
 
-    async fn forward<F: Fn() -> Fut, Fut: Future<Output = ()>>(&self, input_ids: &Tensor, token_type_ids: &Tensor, commit: F) -> Result<Tensor> {
+    fn forward(&self, input_ids: &Tensor, token_type_ids: &Tensor) -> Result<Tensor> {
         let _enter = self.span.enter();
         ic_cdk::println!("check point 01");
         let (_bsize, seq_len) = input_ids.dims2()?;
@@ -284,7 +284,6 @@ impl BertEmbeddings {
         }
         let embeddings = self.layer_norm.forward(&embeddings)?;
         ic_cdk::println!("check point 09");
-        commit();
         let embeddings = self.dropout.forward(&embeddings)?;
         ic_cdk::println!("check point 10");
         Ok(embeddings)
@@ -574,8 +573,8 @@ impl BertModel {
 
     pub async fn forward<F: Fn() -> Fut, Fut: Future<Output = ()>>(&self, input_ids: &Tensor, token_type_ids: &Tensor, commit: F) -> Result<Tensor> {
         let _enter = self.span.enter();
-        let embedding_output = self.embeddings.forward(input_ids, token_type_ids, commit).await?;
-        // commit();
+        let embedding_output = self.embeddings.forward(input_ids, token_type_ids)?;
+        commit().await;
         let sequence_output = self.encoder.forward(&embedding_output)?;
         Ok(sequence_output)
     }

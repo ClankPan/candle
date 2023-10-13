@@ -579,6 +579,7 @@ impl BertModel {
         let embedding_output = self.embeddings.forward(input_ids, token_type_ids)?;
         commit().await;
         let sequence_output = self.encoder.forward(&embedding_output)?;
+        commit().await;
         Ok(sequence_output)
     }
 }

@@ -262,30 +262,40 @@ impl BertEmbeddings {
         })
     }
 
-    fn forward(&self, input_ids: &Tensor, token_type_ids: &Tensor) -> Result<Tensor> {
+    async fn forward<F: Fn() -> Fut, Fut: Future<Output = ()>>(&self, input_ids: &Tensor, token_type_ids: &Tensor, commit: F) -> Result<Tensor> {
         let _enter = self.span.enter();
         ic_cdk::println!("check point 01");
+        commit();
         let (_bsize, seq_len) = input_ids.dims2()?;
         ic_cdk::println!("check point 02");
+        commit();
         let input_embeddings = self.word_embeddings.forward(input_ids)?;
         ic_cdk::println!("check point 03");
+        commit();
         let token_type_embeddings = self.token_type_embeddings.forward(token_type_ids)?;
         ic_cdk::println!("check point 04");
+        commit();
         let mut embeddings = (&input_embeddings + token_type_embeddings)?;
         ic_cdk::println!("check point 05");
+        commit();
         if let Some(position_embeddings) = &self.position_embeddings {
             // TODO: Proper absolute positions?
             let position_ids = (0..seq_len as u32).collect::<Vec<_>>();
             ic_cdk::println!("check point 06");
+            commit();
             let position_ids = Tensor::new(&position_ids[..], input_ids.device())?;
             ic_cdk::println!("check point 07");
+            commit();
             embeddings = embeddings.broadcast_add(&position_embeddings.forward(&position_ids)?)?;
             ic_cdk::println!("check point 08");
+            commit();
         }
         let embeddings = self.layer_norm.forward(&embeddings)?;
         ic_cdk::println!("check point 09");
+        commit();
         let embeddings = self.dropout.forward(&embeddings)?;
         ic_cdk::println!("check point 10");
+        commit();
         Ok(embeddings)
     }
 }
@@ -573,8 +583,8 @@ impl BertModel {
 
     pub async fn forward<F: Fn() -> Fut, Fut: Future<Output = ()>>(&self, input_ids: &Tensor, token_type_ids: &Tensor, commit: F) -> Result<Tensor> {
         let _enter = self.span.enter();
-        let embedding_output = self.embeddings.forward(input_ids, token_type_ids)?;
-        commit();
+        let embedding_output = self.embeddings.forward(input_ids, token_type_ids, commit).await?;
+        // commit();
         let sequence_output = self.encoder.forward(&embedding_output)?;
         Ok(sequence_output)
     }

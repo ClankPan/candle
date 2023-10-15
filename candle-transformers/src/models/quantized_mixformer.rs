@@ -1,3 +1,5 @@
+use std::future::Future;
+
 use crate::quantized_nn::{layer_norm, linear, Linear};
 pub use crate::quantized_var_builder::VarBuilder;
 use candle::{DType, Device, IndexOp, Module, Result, Tensor, D};
@@ -310,7 +312,7 @@ impl MixFormerSequentialForCausalLM {
         })
     }
 
-    pub fn forward(&mut self, xs: &Tensor) -> Result<Tensor> {
+    pub async fn forward<F: Fn() -> Fut, Fut: Future<Output = ()>>(&mut self, xs: &Tensor, commit: F) -> Result<Tensor> {
         let _enter = self.span.enter();
         ic_cdk::println!("check point 11.1.1");
         let (_b_size, seq_len) = xs.dims2()?;
@@ -325,6 +327,7 @@ impl MixFormerSequentialForCausalLM {
         ic_cdk::println!("check point 11.1.4");
         for block in self.blocks.iter_mut() {
             ic_cdk::println!("check point 11.1.5...");
+            commit().await;
             xs = block.forward(&xs, mask.as_ref())?
         }
         ic_cdk::println!("check point 11.1.6");

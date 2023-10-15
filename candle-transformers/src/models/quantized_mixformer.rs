@@ -315,15 +315,19 @@ impl MixFormerSequentialForCausalLM {
     pub async fn forward<F: Fn() -> Fut, Fut: Future<Output = ()>>(&mut self, xs: &Tensor, commit: F) -> Result<Tensor> {
         let _enter = self.span.enter();
         ic_cdk::println!("check point 11.1.1");
+        commit().await;
         let (_b_size, seq_len) = xs.dims2()?;
         ic_cdk::println!("check point 11.1.2");
+        commit().await;
         let mut xs = xs.apply(&self.embedding)?;
         ic_cdk::println!("check point 11.1.3");
+        commit().await;
         let mask = if seq_len <= 1 {
             None
         } else {
             Some(get_mask(seq_len, xs.device())?)
         };
+        commit().await;
         ic_cdk::println!("check point 11.1.4");
         for block in self.blocks.iter_mut() {
             ic_cdk::println!("check point 11.1.5...");

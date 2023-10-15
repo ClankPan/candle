@@ -334,7 +334,7 @@ impl MixFormerSequentialForCausalLM {
         commit().await;
         xs.narrow(1, seq_len - 1, 1)?.apply(&self.head)?.squeeze(1)
     }
-    pub fn forward2(&mut self, xs: &Tensor) -> Result<Tensor> {
+    pub async fn forward2<F: Fn() -> Fut, Fut: Future<Output = ()>>(&mut self, xs: &Tensor, commit: F) -> Result<Tensor> {
         let _enter = self.span.enter();
         ic_cdk::println!("check point 11.1.1");
         let (_b_size, seq_len) = xs.dims2()?;
@@ -347,11 +347,18 @@ impl MixFormerSequentialForCausalLM {
             Some(get_mask(seq_len, xs.device())?)
         };
         ic_cdk::println!("check point 11.1.4");
+        commit().await;
+
+        let mut count = 0;
         for block in self.blocks.iter_mut() {
             ic_cdk::println!("check point 11.1.5...");
-            xs = block.forward(&xs, mask.as_ref())?
+            xs = block.forward(&xs, mask.as_ref())?;
+
+            if count > 7 {commit().await};
+            count +=1;
         }
         ic_cdk::println!("check point 11.1.6");
+        commit().await;
         xs.narrow(1, seq_len - 1, 1)?.apply(&self.head)?.squeeze(1)
     }
 

@@ -347,7 +347,7 @@ impl MixFormerSequentialForCausalLM {
             Some(get_mask(seq_len, xs.device())?)
         };
         // ic_cdk::println!("check point 11.1.4");
-        commit().await;
+        // commit().await;
 
         let mut count = 0;
         for block in self.blocks.iter_mut() {
@@ -361,7 +361,7 @@ impl MixFormerSequentialForCausalLM {
             count +=1;
         }
         // ic_cdk::println!("check point 11.1.6");
-        commit().await;
+        // commit().await;
         xs.narrow(1, seq_len - 1, 1)?.apply(&self.head)?.squeeze(1)
     }
 

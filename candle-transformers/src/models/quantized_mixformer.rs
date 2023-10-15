@@ -354,7 +354,10 @@ impl MixFormerSequentialForCausalLM {
             ic_cdk::println!("check point 11.1.5...");
             xs = block.forward(&xs, mask.as_ref())?;
 
-            if count > 7 {commit().await};
+            if count > 7 {
+                commit().await;
+                count = 0;
+            };
             count +=1;
         }
         ic_cdk::println!("check point 11.1.6");

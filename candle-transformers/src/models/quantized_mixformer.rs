@@ -331,6 +331,7 @@ impl MixFormerSequentialForCausalLM {
             xs = block.forward(&xs, mask.as_ref())?
         }
         ic_cdk::println!("check point 11.1.6");
+        commit().await;
         xs.narrow(1, seq_len - 1, 1)?.apply(&self.head)?.squeeze(1)
     }
 

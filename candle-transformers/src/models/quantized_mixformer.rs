@@ -5,6 +5,8 @@ use candle_nn::Activation;
 
 pub use crate::models::mixformer::Config;
 
+use ic_cdk;
+
 const MAX_SEQ_LEN: usize = 4096;
 
 #[derive(Debug)]
@@ -290,12 +292,16 @@ impl MixFormerSequentialForCausalLM {
     pub fn new(cfg: &Config, vb: VarBuilder) -> Result<Self> {
         let vb = vb.pp("layers");
         let embedding = Embedding::new(cfg, vb.pp(0))?;
+        ic_cdk::println!("check point 04.1");
         let mut blocks = Vec::new();
+        ic_cdk::println!("check point 04.2");
         for i in 0..cfg.n_layer {
             let block = ParallelBlock::new(cfg, vb.pp(i + 1))?;
-            blocks.push(block)
+            blocks.push(block);
+            ic_cdk::println!("check point 04.3..");
         }
         let head = CausalLMHead::new(cfg, vb.pp(cfg.n_layer + 1))?;
+        ic_cdk::println!("check point 04.4");
         Ok(Self {
             embedding,
             blocks,

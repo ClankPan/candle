@@ -268,11 +268,12 @@ impl ParallelBlock {
         })
     }
 
-    fn forward(&mut self, xs: &Tensor, mask: Option<&Tensor>) -> Result<Tensor> {
+    async fn forward<F: Fn() -> Fut, Fut: Future<Output = ()>>(&mut self, xs: &Tensor, mask: Option<&Tensor>, commit: F) -> Result<Tensor> {
         let _enter = self.span.enter();
         let residual = xs;
         let xs = xs.apply(&self.ln)?;
         let attn_outputs = self.mixer.forward(&xs, mask)?;
+        commit().await;
         let feed_forward_hidden_states = self.mlp.forward(&xs)?;
         attn_outputs + feed_forward_hidden_states + residual
     }
@@ -332,7 +333,7 @@ impl MixFormerSequentialForCausalLM {
         for block in self.blocks.iter_mut() {
             ic_cdk::println!("check point 11.1.5...");
             commit().await;
-            xs = block.forward(&xs, mask.as_ref())?
+            xs = block.forward(&xs, mask.as_ref(), &commit).await?
         }
         ic_cdk::println!("check point 11.1.6");
         commit().await;
@@ -356,7 +357,7 @@ impl MixFormerSequentialForCausalLM {
         let mut count = 0;
         for block in self.blocks.iter_mut() {
             // ic_cdk::println!("check point 11.1.5...");
-            xs = block.forward(&xs, mask.as_ref())?;
+            xs = block.forward(&xs, mask.as_ref(), &commit).await?;
 
             if count > 7 {
                 commit().await;

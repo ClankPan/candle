@@ -2,7 +2,7 @@ use crate::models::with_tracing::QMatMul;
 use crate::quantized_var_builder::VarBuilder;
 use candle::{Module, Result, Tensor};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Embedding {
     inner: candle_nn::Embedding,
     span: tracing::Span,
@@ -28,7 +28,7 @@ impl Module for Embedding {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Linear {
     weight: QMatMul,
     bias: Option<Tensor>,

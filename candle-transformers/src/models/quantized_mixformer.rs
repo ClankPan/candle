@@ -11,7 +11,7 @@ use ic_cdk;
 
 const MAX_SEQ_LEN: usize = 4096;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Embedding {
     wte: crate::quantized_nn::Embedding,
 }
@@ -43,7 +43,7 @@ fn masked_fill(on_false: &Tensor, mask: &Tensor, on_true: f32) -> Result<Tensor>
     Ok(m)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct RotaryEmbedding {
     sin: Tensor,
     cos: Tensor,
@@ -109,7 +109,7 @@ impl RotaryEmbedding {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(clippy::upper_case_acronyms)]
 struct MLP {
     fc1: Linear,
@@ -136,7 +136,7 @@ impl Module for MLP {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct CausalLMHead {
     ln: candle_nn::LayerNorm,
     linear: Linear,
@@ -158,7 +158,7 @@ impl Module for CausalLMHead {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(clippy::upper_case_acronyms)]
 struct MHA {
     wqkv: Linear,
@@ -247,7 +247,7 @@ impl MHA {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct ParallelBlock {
     ln: candle_nn::LayerNorm,
     mixer: MHA,
@@ -283,7 +283,7 @@ impl ParallelBlock {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MixFormerSequentialForCausalLM {
     embedding: Embedding,
     blocks: Vec<ParallelBlock>,
@@ -292,19 +292,23 @@ pub struct MixFormerSequentialForCausalLM {
 }
 
 impl MixFormerSequentialForCausalLM {
-    pub fn new(cfg: &Config, vb: VarBuilder) -> Result<Self> {
+    pub async fn new<F: Fn() -> Fut, Fut: Future<Output = ()>>(cfg: &Config, vb: VarBuilder, commit: F) -> Result<Self> {
         let vb = vb.pp("layers");
         let embedding = Embedding::new(cfg, vb.pp(0))?;
-        ic_cdk::println!("check point 04.1");
+        commit().await;
+        // ic_cdk::println!("check point 04.1");
         let mut blocks = Vec::new();
-        ic_cdk::println!("check point 04.2");
+        // ic_cdk::println!("check point 04.2");
+        commit().await;
         for i in 0..cfg.n_layer {
             let block = ParallelBlock::new(cfg, vb.pp(i + 1))?;
             blocks.push(block);
-            ic_cdk::println!("check point 04.3..");
+            // ic_cdk::println!("check point 04.3..");
+            commit().await;
         }
         let head = CausalLMHead::new(cfg, vb.pp(cfg.n_layer + 1))?;
-        ic_cdk::println!("check point 04.4");
+        commit().await;
+        // ic_cdk::println!("check point 04.4");
         Ok(Self {
             embedding,
             blocks,
@@ -315,13 +319,13 @@ impl MixFormerSequentialForCausalLM {
 
     pub async fn forward<F: Fn() -> Fut, Fut: Future<Output = ()>>(&mut self, xs: &Tensor, commit: F) -> Result<Tensor> {
         let _enter = self.span.enter();
-        ic_cdk::println!("check point 11.1.1");
+        // ic_cdk::println!("check point 11.1.1");
         commit().await;
         let (_b_size, seq_len) = xs.dims2()?;
-        ic_cdk::println!("check point 11.1.2");
+        // ic_cdk::println!("check point 11.1.2");
         commit().await;
         let mut xs = xs.apply(&self.embedding)?;
-        ic_cdk::println!("check point 11.1.3");
+        // ic_cdk::println!("check point 11.1.3");
         commit().await;
         let mask = if seq_len <= 1 {
             None
@@ -329,13 +333,13 @@ impl MixFormerSequentialForCausalLM {
             Some(get_mask(seq_len, xs.device())?)
         };
         commit().await;
-        ic_cdk::println!("check point 11.1.4");
+        // ic_cdk::println!("check point 11.1.4");
         for block in self.blocks.iter_mut() {
-            ic_cdk::println!("check point 11.1.5...");
+            // ic_cdk::println!("check point 11.1.5...");
             commit().await;
             xs = block.forward(&xs, mask.as_ref(), &commit).await?
         }
-        ic_cdk::println!("check point 11.1.6");
+        // ic_cdk::println!("check point 11.1.6");
         commit().await;
         xs.narrow(1, seq_len - 1, 1)?.apply(&self.head)?.squeeze(1)
     }

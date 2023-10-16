@@ -78,6 +78,7 @@ pub fn conv2d(
 }
 
 // QMatMul wrapper adding some tracing.
+#[derive(Clone)]
 pub struct QMatMul {
     inner: candle::quantized::QMatMul,
     span: tracing::Span,

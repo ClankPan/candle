@@ -3,7 +3,7 @@ use candle::{DType, Device, IndexOp, Result, Tensor, D};
 use candle_nn::{layer_norm, LayerNorm, Module, VarBuilder};
 use serde::Deserialize;
 
-pub const DTYPE: DType = DType::F32;
+// pub const DTYPE: DType = DType::F32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -299,10 +299,10 @@ impl BertLayer {
     }
 }
 
-fn build_alibi_bias(cfg: &Config) -> Result<Tensor> {
+fn build_alibi_bias(cfg: &Config, dtype: DType) -> Result<Tensor> {
     let n_heads = cfg.num_attention_heads;
     let seq_len = cfg.max_position_embeddings;
-    let alibi_bias = Tensor::arange(0, seq_len as i64, &Device::Cpu)?.to_dtype(DType::F32)?;
+    let alibi_bias = Tensor::arange(0, seq_len as i64, &Device::Cpu)?.to_dtype(dtype)?;
     let alibi_bias = {
         let a1 = alibi_bias.reshape((1, seq_len))?;
         let a2 = alibi_bias.reshape((seq_len, 1))?;
@@ -327,8 +327,8 @@ fn build_alibi_bias(cfg: &Config) -> Result<Tensor> {
             .cloned()
             .collect::<Vec<f32>>()
     };
-    let slopes = Tensor::new(slopes, &Device::Cpu)?.reshape((1, (), 1, 1))?;
-    alibi_bias.to_dtype(DType::F32)?.broadcast_mul(&slopes)
+    let slopes = Tensor::new(slopes, &Device::Cpu)?.reshape((1, (), 1, 1))?.to_dtype(dtype)?;
+    alibi_bias.to_dtype(dtype)?.broadcast_mul(&slopes)
 }
 
 #[derive(Clone, Debug)]
@@ -347,7 +347,7 @@ impl BertEncoder {
             .map(|index| BertLayer::new(vb.pp(format!("layer.{index}")), cfg))
             .collect::<Result<Vec<_>>>()?;
         let span = tracing::span!(tracing::Level::TRACE, "encoder");
-        let alibi = build_alibi_bias(cfg)?.to_device(vb.device())?;
+        let alibi = build_alibi_bias(cfg, vb.dtype())?.to_device(vb.device())?;
         Ok(Self {
             alibi,
             layers,
